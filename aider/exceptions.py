@@ -50,23 +50,7 @@ class LiteLLMExceptions:
         self._load()
 
     def _load(self, strict=False):
-        import litellm
-
-        for var in dir(litellm):
-            if not var.endswith("Error"):
-                continue
-
-            ex_info = None
-            for exi in EXCEPTIONS:
-                if var == exi.name:
-                    ex_info = exi
-                    break
-
-            if strict and not ex_info:
-                raise ValueError(f"{var} is in litellm but not in aider's exceptions list")
-
-            ex = getattr(litellm, var)
-            self.exceptions[ex] = ex_info
+        pass
 
     def exceptions_tuple(self):
         return tuple(self.exceptions)

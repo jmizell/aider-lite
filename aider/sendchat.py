@@ -1,17 +1,9 @@
-import hashlib
 import json
 import time
 
 from aider.dump import dump  # noqa: F401
 from aider.exceptions import LiteLLMExceptions
-from aider.llm import litellm
-
-# from diskcache import Cache
-
-
-CACHE_PATH = "~/.aider.send.cache.v1"
-CACHE = None
-# CACHE = Cache(CACHE_PATH)
+from aider.llm import apiclient
 
 RETRY_TIMEOUT = 60
 
@@ -40,20 +32,11 @@ def send_completion(
     if extra_params is not None:
         kwargs.update(extra_params)
 
-    key = json.dumps(kwargs, sort_keys=True).encode()
+    print("DEBUG -- -- send_completion")
+    print(json.dumps(kwargs, sort_keys=True, indent=2))
 
-    # Generate SHA1 hash of kwargs and append it to chat_completion_call_hashes
-    hash_object = hashlib.sha1(key)
-
-    if not stream and CACHE is not None and key in CACHE:
-        return hash_object, CACHE[key]
-
-    res = litellm.completion(**kwargs)
-
-    if not stream and CACHE is not None:
-        CACHE[key] = res
-
-    return hash_object, res
+    res = apiclient.completion(**kwargs)
+    return res
 
 
 def simple_send_with_retries(model_name, messages, extra_params=None):
@@ -70,7 +53,7 @@ def simple_send_with_retries(model_name, messages, extra_params=None):
                 "extra_params": extra_params,
             }
 
-            _hash, response = send_completion(**kwargs)
+            response = send_completion(**kwargs)
             if not response or not hasattr(response, "choices") or not response.choices:
                 return None
             return response.choices[0].message.content

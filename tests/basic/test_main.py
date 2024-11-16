@@ -32,8 +32,6 @@ class TestMain(TestCase):
         os.environ["HOME"] = self.homedir_obj.name
         self.input_patcher = patch("builtins.input", return_value=None)
         self.mock_input = self.input_patcher.start()
-        self.webbrowser_patcher = patch("aider.io.webbrowser.open")
-        self.mock_webbrowser = self.webbrowser_patcher.start()
 
     def tearDown(self):
         os.chdir(self.original_cwd)
@@ -42,7 +40,6 @@ class TestMain(TestCase):
         os.environ.clear()
         os.environ.update(self.original_env)
         self.input_patcher.stop()
-        self.webbrowser_patcher.stop()
 
     def test_main_with_empty_dir_no_files_on_command(self):
         main(["--no-git", "--exit"], input=DummyInput(), output=DummyOutput())
@@ -161,7 +158,7 @@ class TestMain(TestCase):
             main([], input=DummyInput())
             _, kwargs = MockCoder.call_args
             assert kwargs["dirty_commits"] is True
-            assert kwargs["auto_commits"] is True
+            assert kwargs["auto_commits"] is False
 
         with patch("aider.coders.Coder.create") as MockCoder:
             main(["--no-dirty-commits"], input=DummyInput())
@@ -236,16 +233,6 @@ class TestMain(TestCase):
                     MockSend.side_effect = side_effect
 
                     main(["--yes", fname, "--encoding", "iso-8859-15"])
-
-    def test_main_exit_calls_version_check(self):
-        with GitTemporaryDirectory():
-            with (
-                patch("aider.main.check_version") as mock_check_version,
-                patch("aider.main.InputOutput") as mock_input_output,
-            ):
-                main(["--exit", "--check-update"], input=DummyInput(), output=DummyOutput())
-                mock_check_version.assert_called_once()
-                mock_input_output.assert_called_once()
 
     @patch("aider.main.InputOutput")
     @patch("aider.coders.base_coder.Coder.run")
@@ -532,47 +519,6 @@ class TestMain(TestCase):
             )
 
             self.assertEqual(coder.main_model.info["max_input_tokens"], 1234)
-
-    def test_sonnet_and_cache_options(self):
-        with GitTemporaryDirectory():
-            with patch("aider.coders.base_coder.RepoMap") as MockRepoMap:
-                mock_repo_map = MagicMock()
-                mock_repo_map.max_map_tokens = 1000  # Set a specific value
-                MockRepoMap.return_value = mock_repo_map
-
-                main(
-                    ["--sonnet", "--cache-prompts", "--exit", "--yes"],
-                    input=DummyInput(),
-                    output=DummyOutput(),
-                )
-
-                MockRepoMap.assert_called_once()
-                call_args, call_kwargs = MockRepoMap.call_args
-                self.assertEqual(
-                    call_kwargs.get("refresh"), "files"
-                )  # Check the 'refresh' keyword argument
-
-    def test_sonnet_and_cache_prompts_options(self):
-        with GitTemporaryDirectory():
-            coder = main(
-                ["--sonnet", "--cache-prompts", "--exit", "--yes"],
-                input=DummyInput(),
-                output=DummyOutput(),
-                return_coder=True,
-            )
-
-            self.assertTrue(coder.add_cache_headers)
-
-    def test_4o_and_cache_options(self):
-        with GitTemporaryDirectory():
-            coder = main(
-                ["--4o", "--cache-prompts", "--exit", "--yes"],
-                input=DummyInput(),
-                output=DummyOutput(),
-                return_coder=True,
-            )
-
-            self.assertFalse(coder.add_cache_headers)
 
     def test_return_coder(self):
         with GitTemporaryDirectory():

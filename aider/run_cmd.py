@@ -5,7 +5,6 @@ import sys
 from io import BytesIO
 
 import pexpect
-import psutil
 
 
 def run_cmd(command, verbose=False, error_print=None):
@@ -23,41 +22,20 @@ def run_cmd(command, verbose=False, error_print=None):
         return 1, error_message
 
 
-def get_windows_parent_process_name():
-    try:
-        current_process = psutil.Process()
-        while True:
-            parent = current_process.parent()
-            if parent is None:
-                break
-            parent_name = parent.name().lower()
-            if parent_name in ["powershell.exe", "cmd.exe"]:
-                return parent_name
-            current_process = parent
-        return None
-    except Exception:
-        return None
-
-
 def run_cmd_subprocess(command, verbose=False):
     if verbose:
         print("Using run_cmd_subprocess:", command)
 
     try:
         shell = os.environ.get("SHELL", "/bin/sh")
-        parent_process = None
 
         # Determine the appropriate shell
         if platform.system() == "Windows":
-            parent_process = get_windows_parent_process_name()
-            if parent_process == "powershell.exe":
-                command = f"powershell -Command {command}"
+            command = f"powershell -Command {command}"
 
         if verbose:
             print("Running command:", command)
             print("SHELL:", shell)
-            if platform.system() == "Windows":
-                print("Parent process:", parent_process)
 
         process = subprocess.Popen(
             command,

@@ -20,13 +20,11 @@ from pathlib import Path
 from typing import List
 
 from aider import __version__, models, prompts, urls, utils
-from aider.analytics import Analytics
 from aider.commands import Commands
 from aider.exceptions import LiteLLMExceptions
 from aider.history import ChatSummary
 from aider.io import ConfirmGroup, InputOutput
 from aider.linter import Linter
-from aider.llm import litellm
 from aider.repo import ANY_GIT_ERROR, GitRepo
 from aider.repomap import RepoMap
 from aider.run_cmd import run_cmd
@@ -261,17 +259,13 @@ class Coder:
         commands=None,
         summarizer=None,
         total_cost=0.0,
-        analytics=None,
         map_refresh="auto",
         cache_prompts=False,
         num_cache_warming_pings=0,
         suggest_shell_commands=True,
         chat_language=None,
     ):
-        # Fill in a dummy Analytics if needed, but it is never .enable()'d
-        self.analytics = analytics if analytics is not None else Analytics()
 
-        self.event = self.analytics.event
         self.chat_language = chat_language
         self.commit_before_message = []
         self.aider_commit_hashes = set()
@@ -767,7 +761,6 @@ class Coder:
             return self.commands.run(inp)
 
         self.check_for_file_mentions(inp)
-        self.check_for_urls(inp)
 
         return inp
 
@@ -809,26 +802,6 @@ class Coder:
             url = url.rstrip(".',\"")
             self.io.offer_url(url)
         return urls
-
-    def check_for_urls(self, inp: str) -> List[str]:
-        """Check input for URLs and offer to add them to the chat."""
-        url_pattern = re.compile(r"(https?://[^\s/$.?#].[^\s]*[^\s,.])")
-        urls = list(set(url_pattern.findall(inp)))  # Use set to remove duplicates
-        added_urls = []
-        group = ConfirmGroup(urls)
-        for url in urls:
-            if url not in self.rejected_urls:
-                url = url.rstrip(".',\"")
-                if self.io.confirm_ask(
-                    "Add URL to the chat?", subject=url, group=group, allow_never=True
-                ):
-                    inp += "\n\n"
-                    inp += self.commands.cmd_web(url, return_content=True)
-                    added_urls.append(url)
-                else:
-                    self.rejected_urls.add(url)
-
-        return added_urls
 
     def keyboard_interrupt(self):
         now = time.time()
@@ -1083,59 +1056,6 @@ class Coder:
 
         return chunks
 
-    def warm_cache(self, chunks):
-        if not self.add_cache_headers:
-            return
-        if not self.num_cache_warming_pings:
-            return
-
-        delay = 5 * 60 - 5
-        self.next_cache_warm = time.time() + delay
-        self.warming_pings_left = self.num_cache_warming_pings
-        self.cache_warming_chunks = chunks
-
-        if self.cache_warming_thread:
-            return
-
-        def warm_cache_worker():
-            while True:
-                time.sleep(1)
-                if self.warming_pings_left <= 0:
-                    continue
-                now = time.time()
-                if now < self.next_cache_warm:
-                    continue
-
-                self.warming_pings_left -= 1
-                self.next_cache_warm = time.time() + delay
-
-                kwargs = dict(self.main_model.extra_params) or dict()
-                kwargs["max_tokens"] = 1
-
-                try:
-                    completion = litellm.completion(
-                        model=self.main_model.name,
-                        messages=self.cache_warming_chunks.cacheable_messages(),
-                        stream=False,
-                        **kwargs,
-                    )
-                except Exception as err:
-                    self.io.tool_warning(f"Cache warming error: {str(err)}")
-                    continue
-
-                cache_hit_tokens = getattr(
-                    completion.usage, "prompt_cache_hit_tokens", 0
-                ) or getattr(completion.usage, "cache_read_input_tokens", 0)
-
-                if self.verbose:
-                    self.io.tool_output(f"Warmed {format_tokens(cache_hit_tokens)} cached tokens.")
-
-        self.cache_warming_thread = threading.Timer(0, warm_cache_worker)
-        self.cache_warming_thread.daemon = True
-        self.cache_warming_thread.start()
-
-        return chunks
-
     def send_message(self, inp):
         self.cur_messages += [
             dict(role="user", content=inp),
@@ -1143,7 +1063,6 @@ class Coder:
 
         chunks = self.format_messages()
         messages = chunks.all_messages()
-        self.warm_cache(chunks)
 
         if self.verbose:
             utils.show_messages(messages, functions=self.functions)
@@ -1461,7 +1380,7 @@ class Coder:
 
         completion = None
         try:
-            hash_object, completion = send_completion(
+            completion = send_completion(
                 model.name,
                 messages,
                 functions,
@@ -1469,7 +1388,6 @@ class Coder:
                 temp,
                 extra_params=model.extra_params,
             )
-            self.chat_completion_call_hashes.append(hash_object.hexdigest())
 
             if self.stream:
                 yield from self.show_send_output_stream(completion)
@@ -1687,27 +1605,7 @@ class Coder:
         self.usage_report = tokens_report + sep + cost_report
 
     def show_usage_report(self):
-        if not self.usage_report:
-            return
-
-        self.io.tool_output(self.usage_report)
-
-        prompt_tokens = self.message_tokens_sent
-        completion_tokens = self.message_tokens_received
-        self.event(
-            "message_send",
-            main_model=self.main_model,
-            edit_format=self.edit_format,
-            prompt_tokens=prompt_tokens,
-            completion_tokens=completion_tokens,
-            total_tokens=prompt_tokens + completion_tokens,
-            cost=self.message_cost,
-            total_cost=self.total_cost,
-        )
-
-        self.message_cost = 0.0
-        self.message_tokens_sent = 0
-        self.message_tokens_received = 0
+        pass
 
     def get_multi_response_content(self, final=False):
         cur = self.multi_response_content or ""

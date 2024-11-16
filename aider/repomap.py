@@ -2,20 +2,16 @@ import colorsys
 import math
 import os
 import random
-import shutil
 import sqlite3
 import sys
 import time
 import warnings
 from collections import Counter, defaultdict, namedtuple
-from importlib import resources
 from pathlib import Path
 
-from diskcache import Cache
 from grep_ast import TreeContext, filename_to_lang
 from pygments.lexers import guess_lexer_for_filename
 from pygments.token import Token
-from tqdm import tqdm
 
 from aider.dump import dump
 from aider.special import filter_important_files
@@ -32,8 +28,6 @@ SQLITE_ERRORS = (sqlite3.OperationalError, sqlite3.DatabaseError, OSError)
 
 
 class RepoMap:
-    CACHE_VERSION = 3
-    TAGS_CACHE_DIR = f".aider.tags.cache.v{CACHE_VERSION}"
 
     warned_files = set()
 
@@ -176,43 +170,10 @@ class RepoMap:
         if isinstance(getattr(self, "TAGS_CACHE", None), dict):
             return
 
-        path = Path(self.root) / self.TAGS_CACHE_DIR
-
-        # Try to recreate the cache
-        try:
-            # Delete existing cache dir
-            if path.exists():
-                shutil.rmtree(path)
-
-            # Try to create new cache
-            new_cache = Cache(path)
-
-            # Test that it works
-            test_key = "test"
-            new_cache[test_key] = "test"
-            _ = new_cache[test_key]
-            del new_cache[test_key]
-
-            # If we got here, the new cache works
-            self.TAGS_CACHE = new_cache
-            return
-
-        except SQLITE_ERRORS as e:
-            # If anything goes wrong, warn and fall back to dict
-            self.io.tool_warning(
-                f"Unable to use tags cache at {path}, falling back to memory cache"
-            )
-            if self.verbose:
-                self.io.tool_warning(f"Cache recreation error: {str(e)}")
-
         self.TAGS_CACHE = dict()
 
     def load_tags_cache(self):
-        path = Path(self.root) / self.TAGS_CACHE_DIR
-        try:
-            self.TAGS_CACHE = Cache(path)
-        except SQLITE_ERRORS as e:
-            self.tags_cache_error(e)
+        self.tags_cache_error()
 
     def save_tags_cache(self):
         pass
@@ -269,9 +230,10 @@ class RepoMap:
             return
 
         query_scm = get_scm_fname(lang)
-        if not query_scm.exists():
+        if not os.path.exists(query_scm):
             return
-        query_scm = query_scm.read_text()
+        with open(query_scm, 'r') as f:
+            query_scm = str(f.read())
 
         code = self.io.read_text(fname)
         if not code:
@@ -352,20 +314,7 @@ class RepoMap:
         # https://networkx.org/documentation/stable/_modules/networkx/algorithms/link_analysis/pagerank_alg.html#pagerank
         personalize = 100 / len(fnames)
 
-        try:
-            cache_size = len(self.TAGS_CACHE)
-        except SQLITE_ERRORS as e:
-            self.tags_cache_error(e)
-            cache_size = len(self.TAGS_CACHE)
-
-        if len(fnames) - cache_size > 100:
-            self.io.tool_output(
-                "Initial repo scan can be slow in larger repos, but only happens once."
-            )
-            fnames = tqdm(fnames, desc="Scanning repo")
-            showing_bar = True
-        else:
-            showing_bar = False
+        showing_bar = False
 
         for fname in fnames:
             if self.verbose:
@@ -732,8 +681,11 @@ def get_random_color():
 
 def get_scm_fname(lang):
     # Load the tags queries
+    # Get the package directory
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    # Join with the queries path
     try:
-        return resources.files(__package__).joinpath("queries", f"tree-sitter-{lang}-tags.scm")
+        return os.path.join(current_dir, "queries", f"tree-sitter-{lang}-tags.scm")
     except KeyError:
         return
 

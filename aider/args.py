@@ -33,114 +33,10 @@ def get_parser(default_config_files, git_root):
         "files", metavar="FILE", nargs="*", help="files to edit with an LLM (optional)"
     )
     group.add_argument(
-        "--openai-api-key",
-        metavar="OPENAI_API_KEY",
-        env_var="OPENAI_API_KEY",
-        help="Specify the OpenAI API key",
-    )
-    group.add_argument(
-        "--anthropic-api-key",
-        metavar="ANTHROPIC_API_KEY",
-        env_var="ANTHROPIC_API_KEY",
-        help="Specify the Anthropic API key",
-    )
-    group.add_argument(
         "--model",
         metavar="MODEL",
         default=None,
         help="Specify the model to use for the main chat",
-    )
-    opus_model = "claude-3-opus-20240229"
-    group.add_argument(
-        "--opus",
-        action="store_const",
-        dest="model",
-        const=opus_model,
-        help=f"Use {opus_model} model for the main chat",
-    )
-    sonnet_model = "claude-3-5-sonnet-20241022"
-    group.add_argument(
-        "--sonnet",
-        action="store_const",
-        dest="model",
-        const=sonnet_model,
-        help=f"Use {sonnet_model} model for the main chat",
-    )
-    haiku_model = "claude-3-5-haiku-20241022"
-    group.add_argument(
-        "--haiku",
-        action="store_const",
-        dest="model",
-        const=haiku_model,
-        help=f"Use {haiku_model} model for the main chat",
-    )
-    gpt_4_model = "gpt-4-0613"
-    group.add_argument(
-        "--4",
-        "-4",
-        action="store_const",
-        dest="model",
-        const=gpt_4_model,
-        help=f"Use {gpt_4_model} model for the main chat",
-    )
-    gpt_4o_model = "gpt-4o-2024-08-06"
-    group.add_argument(
-        "--4o",
-        action="store_const",
-        dest="model",
-        const=gpt_4o_model,
-        help=f"Use {gpt_4o_model} model for the main chat",
-    )
-    gpt_4o_mini_model = "gpt-4o-mini"
-    group.add_argument(
-        "--mini",
-        action="store_const",
-        dest="model",
-        const=gpt_4o_mini_model,
-        help=f"Use {gpt_4o_mini_model} model for the main chat",
-    )
-    gpt_4_turbo_model = "gpt-4-1106-preview"
-    group.add_argument(
-        "--4-turbo",
-        action="store_const",
-        dest="model",
-        const=gpt_4_turbo_model,
-        help=f"Use {gpt_4_turbo_model} model for the main chat",
-    )
-    gpt_3_model_name = "gpt-3.5-turbo"
-    group.add_argument(
-        "--35turbo",
-        "--35-turbo",
-        "--3",
-        "-3",
-        action="store_const",
-        dest="model",
-        const=gpt_3_model_name,
-        help=f"Use {gpt_3_model_name} model for the main chat",
-    )
-    deepseek_model = "deepseek/deepseek-coder"
-    group.add_argument(
-        "--deepseek",
-        action="store_const",
-        dest="model",
-        const=deepseek_model,
-        help=f"Use {deepseek_model} model for the main chat",
-    )
-    o1_mini_model = "o1-mini"
-    group.add_argument(
-        "--o1-mini",
-        action="store_const",
-        dest="model",
-        const=o1_mini_model,
-        help=f"Use {o1_mini_model} model for the main chat",
-    )
-    o1_preview_model = "o1-preview"
-    group.add_argument(
-        "--o1-preview",
-        action="store_const",
-        dest="model",
-        const=o1_preview_model,
-        help=f"Use {o1_preview_model} model for the main chat",
     )
 
     ##########
@@ -150,36 +46,6 @@ def get_parser(default_config_files, git_root):
         "--models",
         metavar="MODEL",
         help="List known models which match the (partial) MODEL name",
-    )
-    group.add_argument(
-        "--openai-api-base",
-        metavar="OPENAI_API_BASE",
-        env_var="OPENAI_API_BASE",
-        help="Specify the api base url",
-    )
-    group.add_argument(
-        "--openai-api-type",
-        metavar="OPENAI_API_TYPE",
-        env_var="OPENAI_API_TYPE",
-        help="Specify the api_type",
-    )
-    group.add_argument(
-        "--openai-api-version",
-        metavar="OPENAI_API_VERSION",
-        env_var="OPENAI_API_VERSION",
-        help="Specify the api_version",
-    )
-    group.add_argument(
-        "--openai-api-deployment-id",
-        metavar="OPENAI_API_DEPLOYMENT_ID",
-        env_var="OPENAI_API_DEPLOYMENT_ID",
-        help="Specify the deployment_id",
-    )
-    group.add_argument(
-        "--openai-organization-id",
-        metavar="OPENAI_ORGANIZATION_ID",
-        env_var="OPENAI_ORGANIZATION_ID",
-        help="Specify the OpenAI organization ID",
     )
     group.add_argument(
         "--model-settings-file",
@@ -353,8 +219,8 @@ def get_parser(default_config_files, git_root):
     group.add_argument(
         "--stream",
         action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Enable/disable streaming responses (default: True)",
+        default=False,
+        help="Enable/disable streaming responses (default: False)",
     )
     group.add_argument(
         "--user-input-color",
@@ -435,13 +301,13 @@ def get_parser(default_config_files, git_root):
         "--git",
         action=argparse.BooleanOptionalAction,
         default=True,
-        help="Enable/disable looking for a git repo (default: True)",
+        help="Enable/disable looking for a git repo (default: False)",
     )
     group.add_argument(
         "--gitignore",
         action=argparse.BooleanOptionalAction,
-        default=True,
-        help="Enable/disable adding .aider* to .gitignore (default: True)",
+        default=False,
+        help="Enable/disable adding .aider* to .gitignore (default: False)",
     )
     default_aiderignore_file = (
         os.path.join(git_root, ".aiderignore") if git_root else ".aiderignore"
@@ -461,7 +327,7 @@ def get_parser(default_config_files, git_root):
     group.add_argument(
         "--auto-commits",
         action=argparse.BooleanOptionalAction,
-        default=True,
+        default=False,
         help="Enable/disable auto commit of LLM changes (default: True)",
     )
     group.add_argument(
@@ -558,25 +424,6 @@ def get_parser(default_config_files, git_root):
     )
 
     ##########
-    group = parser.add_argument_group("Analytics")
-    group.add_argument(
-        "--analytics",
-        action=argparse.BooleanOptionalAction,
-        default=False,
-        help="Enable/disable analytics for one session (default: False)",
-    )
-    group.add_argument(
-        "--analytics-log",
-        metavar="ANALYTICS_LOG_FILE",
-        help="Specify a file to log analytics events",
-    )
-    group.add_argument(
-        "--analytics-disable",
-        action="store_true",
-        help="Permanently disable analytics",
-        default=False,
-    )
-
     group = parser.add_argument_group("Other Settings")
     group.add_argument(
         "--file",
@@ -609,40 +456,9 @@ def get_parser(default_config_files, git_root):
         help="Show the version number and exit",
     )
     group.add_argument(
-        "--just-check-update",
-        action="store_true",
-        help="Check for updates and return status in the exit code",
-        default=False,
-    )
-    group.add_argument(
-        "--check-update",
-        action=argparse.BooleanOptionalAction,
-        help="Check for new aider versions on launch",
-        default=True,
-    )
-    group.add_argument(
-        "--install-main-branch",
-        action="store_true",
-        help="Install the latest version from the main branch",
-        default=False,
-    )
-    group.add_argument(
-        "--upgrade",
-        "--update",
-        action="store_true",
-        help="Upgrade aider to the latest version from PyPI",
-        default=False,
-    )
-    group.add_argument(
         "--apply",
         metavar="FILE",
         help="Apply the changes from the given file instead of running the chat (debug)",
-    )
-    group.add_argument(
-        "--apply-clipboard-edits",
-        action="store_true",
-        help="Apply clipboard contents as edits using the main model's editor format",
-        default=False,
     )
     group.add_argument(
         "--yes-always",
@@ -714,13 +530,6 @@ def get_parser(default_config_files, git_root):
         ),
     )
     group.add_argument(
-        "--gui",
-        "--browser",
-        action=argparse.BooleanOptionalAction,
-        help="Run aider in your browser (default: False)",
-        default=False,
-    )
-    group.add_argument(
         "--suggest-shell-commands",
         action=argparse.BooleanOptionalAction,
         default=True,
@@ -731,22 +540,6 @@ def get_parser(default_config_files, git_root):
         action=argparse.BooleanOptionalAction,
         default=True,
         help="Enable/disable fancy input with history and completion (default: True)",
-    )
-
-    ##########
-    group = parser.add_argument_group("Voice Settings")
-    group.add_argument(
-        "--voice-format",
-        metavar="VOICE_FORMAT",
-        default="wav",
-        choices=["wav", "mp3", "webm"],
-        help="Audio format for voice recording (default: wav). webm and mp3 require ffmpeg",
-    )
-    group.add_argument(
-        "--voice-language",
-        metavar="VOICE_LANGUAGE",
-        default="en",
-        help="Specify the language for voice using ISO 639-1 code (default: auto)",
     )
 
     return parser

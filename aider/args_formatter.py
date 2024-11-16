@@ -26,14 +26,9 @@ class DotEnvFormatter(argparse.HelpFormatter):
 #################
 # LLM parameters:
 #
-# Include xxx_API_KEY parameters and other params needed for your LLMs.
-# See {urls.llms} for details.
 
-## OpenAI
+## OpenAI Compatible API
 #OPENAI_API_KEY=
-
-## Anthropic
-#ANTHROPIC_API_KEY=
 
 ##...
 """
@@ -96,9 +91,8 @@ class YamlHelpFormatter(argparse.HelpFormatter):
 # Place in your home dir, or at the root of your git repo.
 ##########################################################
 
-# Note: You can only put OpenAI and Anthropic API keys in the yaml
+# Note: You cannot put API keys in the yaml
 # config file. Keys for all APIs can be stored in a .env file
-# https://aider.chat/docs/config/dotenv.html
 
 """
 

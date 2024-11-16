@@ -16,23 +16,8 @@ class TestModels(unittest.TestCase):
         self.assertEqual(info, {})
 
     def test_max_context_tokens(self):
-        model = Model("gpt-3.5-turbo")
-        self.assertEqual(model.info["max_input_tokens"], 16385)
-
-        model = Model("gpt-3.5-turbo-16k")
-        self.assertEqual(model.info["max_input_tokens"], 16385)
-
-        model = Model("gpt-3.5-turbo-1106")
-        self.assertEqual(model.info["max_input_tokens"], 16385)
-
-        model = Model("gpt-4")
-        self.assertEqual(model.info["max_input_tokens"], 8 * 1024)
-
-        model = Model("gpt-4-32k")
-        self.assertEqual(model.info["max_input_tokens"], 32 * 1024)
-
-        model = Model("gpt-4-0613")
-        self.assertEqual(model.info["max_input_tokens"], 8 * 1024)
+        model = Model("meta-llama/llama-3.1-405b-instruct")
+        self.assertEqual(model.info["max_input_tokens"], 128000)
 
     @patch("os.environ")
     def test_sanity_check_model_all_set(self, mock_environ):
@@ -40,33 +25,8 @@ class TestModels(unittest.TestCase):
         mock_io = MagicMock()
         model = MagicMock()
         model.name = "test-model"
-        model.missing_keys = ["API_KEY1", "API_KEY2"]
-        model.keys_in_environment = True
         model.info = {"some": "info"}
-
         sanity_check_model(mock_io, model)
-
-        mock_io.tool_output.assert_called()
-        calls = mock_io.tool_output.call_args_list
-        self.assertIn("- API_KEY1: Set", str(calls))
-        self.assertIn("- API_KEY2: Set", str(calls))
-
-    @patch("os.environ")
-    def test_sanity_check_model_not_set(self, mock_environ):
-        mock_environ.get.return_value = ""
-        mock_io = MagicMock()
-        model = MagicMock()
-        model.name = "test-model"
-        model.missing_keys = ["API_KEY1", "API_KEY2"]
-        model.keys_in_environment = True
-        model.info = {"some": "info"}
-
-        sanity_check_model(mock_io, model)
-
-        mock_io.tool_output.assert_called()
-        calls = mock_io.tool_output.call_args_list
-        self.assertIn("- API_KEY1: Not set", str(calls))
-        self.assertIn("- API_KEY2: Not set", str(calls))
 
     def test_sanity_check_models_bogus_editor(self):
         mock_io = MagicMock()

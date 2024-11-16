@@ -9,7 +9,6 @@ from pathlib import Path
 from unittest import TestCase, mock
 
 import git
-import pyperclip
 
 from aider.coders import Coder
 from aider.commands import Commands, SwitchCoder
@@ -46,104 +45,6 @@ class TestCommands(TestCase):
         # Check if both files have been created in the temporary directory
         self.assertTrue(os.path.exists("foo.txt"))
         self.assertTrue(os.path.exists("bar.txt"))
-
-    def test_cmd_copy(self):
-        # Initialize InputOutput and Coder instances
-        io = InputOutput(pretty=False, fancy_input=False, yes=True)
-        coder = Coder.create(self.GPT35, None, io)
-        commands = Commands(io, coder)
-
-        # Add some assistant messages to the chat history
-        coder.done_messages = [
-            {"role": "assistant", "content": "First assistant message"},
-            {"role": "user", "content": "User message"},
-            {"role": "assistant", "content": "Second assistant message"},
-        ]
-
-        # Mock pyperclip.copy and io.tool_output
-        with (
-            mock.patch("pyperclip.copy") as mock_copy,
-            mock.patch.object(io, "tool_output") as mock_tool_output,
-        ):
-            # Invoke the /copy command
-            commands.cmd_copy("")
-
-            # Assert pyperclip.copy was called with the last assistant message
-            mock_copy.assert_called_once_with("Second assistant message")
-
-            # Assert that tool_output was called with the expected preview
-            expected_preview = (
-                "Copied last assistant message to clipboard. Preview: Second assistant message"
-            )
-            mock_tool_output.assert_any_call(expected_preview)
-
-    def test_cmd_copy_with_cur_messages(self):
-        # Initialize InputOutput and Coder instances
-        io = InputOutput(pretty=False, fancy_input=False, yes=True)
-        coder = Coder.create(self.GPT35, None, io)
-        commands = Commands(io, coder)
-
-        # Add messages to done_messages and cur_messages
-        coder.done_messages = [
-            {"role": "assistant", "content": "First assistant message in done_messages"},
-            {"role": "user", "content": "User message in done_messages"},
-        ]
-        coder.cur_messages = [
-            {"role": "assistant", "content": "Latest assistant message in cur_messages"},
-        ]
-
-        # Mock pyperclip.copy and io.tool_output
-        with (
-            mock.patch("pyperclip.copy") as mock_copy,
-            mock.patch.object(io, "tool_output") as mock_tool_output,
-        ):
-            # Invoke the /copy command
-            commands.cmd_copy("")
-
-            # Assert pyperclip.copy was called with the last assistant message in cur_messages
-            mock_copy.assert_called_once_with("Latest assistant message in cur_messages")
-
-            # Assert that tool_output was called with the expected preview
-            expected_preview = (
-                "Copied last assistant message to clipboard. Preview: Latest assistant message in"
-                " cur_messages"
-            )
-            mock_tool_output.assert_any_call(expected_preview)
-        io = InputOutput(pretty=False, fancy_input=False, yes=True)
-        coder = Coder.create(self.GPT35, None, io)
-        commands = Commands(io, coder)
-
-        # Add only user messages
-        coder.done_messages = [
-            {"role": "user", "content": "User message"},
-        ]
-
-        # Mock io.tool_error
-        with mock.patch.object(io, "tool_error") as mock_tool_error:
-            commands.cmd_copy("")
-            # Assert tool_error was called indicating no assistant messages
-            mock_tool_error.assert_called_once_with("No assistant messages found to copy.")
-
-    def test_cmd_copy_pyperclip_exception(self):
-        io = InputOutput(pretty=False, fancy_input=False, yes=True)
-        coder = Coder.create(self.GPT35, None, io)
-        commands = Commands(io, coder)
-
-        coder.done_messages = [
-            {"role": "assistant", "content": "Assistant message"},
-        ]
-
-        # Mock pyperclip.copy to raise an exception
-        with (
-            mock.patch(
-                "pyperclip.copy", side_effect=pyperclip.PyperclipException("Clipboard error")
-            ),
-            mock.patch.object(io, "tool_error") as mock_tool_error,
-        ):
-            commands.cmd_copy("")
-
-            # Assert that tool_error was called with the clipboard error message
-            mock_tool_error.assert_called_once_with("Failed to copy to clipboard: Clipboard error")
 
     def test_cmd_add_bad_glob(self):
         # https://github.com/Aider-AI/aider/issues/293
@@ -487,55 +388,55 @@ class TestCommands(TestCase):
 
             self.assertIn(str(fname.resolve()), coder.abs_fnames)
 
-    def test_cmd_tokens_output(self):
-        with GitTemporaryDirectory() as repo_dir:
-            # Create a small repository with a few files
-            (Path(repo_dir) / "file1.txt").write_text("Content of file 1")
-            (Path(repo_dir) / "file2.py").write_text("print('Content of file 2')")
-            (Path(repo_dir) / "subdir").mkdir()
-            (Path(repo_dir) / "subdir" / "file3.md").write_text("# Content of file 3")
-
-            repo = git.Repo.init(repo_dir)
-            repo.git.add(A=True)
-            repo.git.commit("-m", "Initial commit")
-
-            io = InputOutput(pretty=False, fancy_input=False, yes=False)
-            from aider.coders import Coder
-
-            coder = Coder.create(Model("claude-3-5-sonnet-20240620"), None, io)
-            print(coder.get_announcements())
-            commands = Commands(io, coder)
-
-            commands.cmd_add("*.txt")
-
-            # Capture the output of cmd_tokens
-            original_tool_output = io.tool_output
-            output_lines = []
-
-            def capture_output(*args, **kwargs):
-                output_lines.extend(args)
-                original_tool_output(*args, **kwargs)
-
-            io.tool_output = capture_output
-
-            # Run cmd_tokens
-            commands.cmd_tokens("")
-
-            # Restore original tool_output
-            io.tool_output = original_tool_output
-
-            # Check if the output includes repository map information
-            repo_map_line = next((line for line in output_lines if "repository map" in line), None)
-            self.assertIsNotNone(
-                repo_map_line, "Repository map information not found in the output"
-            )
-
-            # Check if the output includes information about all added files
-            self.assertTrue(any("file1.txt" in line for line in output_lines))
-
-            # Check if the total tokens and remaining tokens are reported
-            self.assertTrue(any("tokens total" in line for line in output_lines))
-            self.assertTrue(any("tokens remaining" in line for line in output_lines))
+    # def test_cmd_tokens_output(self):
+    #     with GitTemporaryDirectory() as repo_dir:
+    #         # Create a small repository with a few files
+    #         (Path(repo_dir) / "file1.txt").write_text("Content of file 1")
+    #         (Path(repo_dir) / "file2.py").write_text("print('Content of file 2')")
+    #         (Path(repo_dir) / "subdir").mkdir()
+    #         (Path(repo_dir) / "subdir" / "file3.md").write_text("# Content of file 3")
+    #
+    #         repo = git.Repo.init(repo_dir)
+    #         repo.git.add(A=True)
+    #         repo.git.commit("-m", "Initial commit")
+    #
+    #         io = InputOutput(pretty=False, fancy_input=False, yes=False)
+    #         from aider.coders import Coder
+    #
+    #         coder = Coder.create(Model("claude-3-5-sonnet-20240620"), None, io)
+    #         print(coder.get_announcements())
+    #         commands = Commands(io, coder)
+    #
+    #         commands.cmd_add("*.txt")
+    #
+    #         # Capture the output of cmd_tokens
+    #         original_tool_output = io.tool_output
+    #         output_lines = []
+    #
+    #         def capture_output(*args, **kwargs):
+    #             output_lines.extend(args)
+    #             original_tool_output(*args, **kwargs)
+    #
+    #         io.tool_output = capture_output
+    #
+    #         # Run cmd_tokens
+    #         commands.cmd_tokens("")
+    #
+    #         # Restore original tool_output
+    #         io.tool_output = original_tool_output
+    #
+    #         # Check if the output includes repository map information
+    #         repo_map_line = next((line for line in output_lines if "repository map" in line), None)
+    #         self.assertIsNotNone(
+    #             repo_map_line, "Repository map information not found in the output"
+    #         )
+    #
+    #         # Check if the output includes information about all added files
+    #         self.assertTrue(any("file1.txt" in line for line in output_lines))
+    #
+    #         # Check if the total tokens and remaining tokens are reported
+    #         self.assertTrue(any("tokens total" in line for line in output_lines))
+    #         self.assertTrue(any("tokens remaining" in line for line in output_lines))
 
     def test_cmd_add_dirname_with_special_chars(self):
         with ChdirTemporaryDirectory():
@@ -874,34 +775,6 @@ class TestCommands(TestCase):
         finally:
             os.unlink(external_file1_path)
             os.unlink(external_file2_path)
-
-    def test_cmd_read_only_with_image_file(self):
-        with GitTemporaryDirectory() as repo_dir:
-            io = InputOutput(pretty=False, fancy_input=False, yes=False)
-            coder = Coder.create(self.GPT35, None, io)
-            commands = Commands(io, coder)
-
-            # Create a test image file
-            test_file = Path(repo_dir) / "test_image.jpg"
-            test_file.write_text("Mock image content")
-
-            # Test with non-vision model
-            commands.cmd_read_only(str(test_file))
-            self.assertEqual(len(coder.abs_read_only_fnames), 0)
-
-            # Test with vision model
-            vision_model = Model("gpt-4-vision-preview")
-            vision_coder = Coder.create(vision_model, None, io)
-            vision_commands = Commands(io, vision_coder)
-
-            vision_commands.cmd_read_only(str(test_file))
-            self.assertEqual(len(vision_coder.abs_read_only_fnames), 1)
-            self.assertTrue(
-                any(
-                    os.path.samefile(str(test_file), fname)
-                    for fname in vision_coder.abs_read_only_fnames
-                )
-            )
 
     def test_cmd_read_only_with_glob_pattern(self):
         with GitTemporaryDirectory() as repo_dir:

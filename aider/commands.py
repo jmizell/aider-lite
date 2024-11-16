@@ -3,23 +3,18 @@ import os
 import re
 import subprocess
 import sys
-import tempfile
 from collections import OrderedDict
 from os.path import expanduser
 from pathlib import Path
 
-import pyperclip
-from PIL import Image, ImageGrab
 from prompt_toolkit.completion import Completion, PathCompleter
 from prompt_toolkit.document import Document
 
-from aider import models, prompts, voice
+from aider import models, prompts
 from aider.format_settings import format_settings
-from aider.help import Help, install_help_extra
-from aider.llm import litellm
+from aider.llm import apiclient
 from aider.repo import ANY_GIT_ERROR
 from aider.run_cmd import run_cmd
-from aider.scrape import Scraper, install_playwright
 from aider.utils import is_image_file
 
 from .dump import dump  # noqa: F401
@@ -31,38 +26,30 @@ class SwitchCoder(Exception):
 
 
 class Commands:
-    voice = None
     scraper = None
 
     def clone(self):
         return Commands(
             self.io,
             None,
-            voice_language=self.voice_language,
             verify_ssl=self.verify_ssl,
             args=self.args,
             parser=self.parser,
         )
 
     def __init__(
-        self, io, coder, voice_language=None, verify_ssl=True, args=None, parser=None, verbose=False
+        self, io, coder, verify_ssl=True, args=None, parser=None, verbose=False
     ):
         self.io = io
         self.coder = coder
         self.parser = parser
         self.args = args
         self.verbose = verbose
-
         self.verify_ssl = verify_ssl
-        if voice_language == "auto":
-            voice_language = None
-
-        self.voice_language = voice_language
-
         self.help = None
 
     def cmd_model(self, args):
-        "Switch to a new LLM"
+        """Switch to a new LLM"""
 
         model_name = args.strip()
         model = models.Model(model_name)
@@ -70,7 +57,7 @@ class Commands:
         raise SwitchCoder(main_model=model)
 
     def cmd_chat_mode(self, args):
-        "Switch to a new chat mode"
+        """Switch to a new chat mode"""
 
         from aider import coders
 
@@ -126,11 +113,10 @@ class Commands:
         )
 
     def completions_model(self):
-        models = litellm.model_cost.keys()
-        return models
+        return apiclient.model_cost.keys()
 
     def cmd_models(self, args):
-        "Search the list of available models"
+        """Search the list of available models"""
 
         args = args.strip()
 
@@ -138,36 +124,6 @@ class Commands:
             models.print_matching_models(self.io, args)
         else:
             self.io.tool_output("Please provide a partial model name to search for.")
-
-    def cmd_web(self, args, return_content=False):
-        "Scrape a webpage, convert to markdown and send in a message"
-
-        url = args.strip()
-        if not url:
-            self.io.tool_error("Please provide a URL to scrape.")
-            return
-
-        self.io.tool_output(f"Scraping {url}...")
-        if not self.scraper:
-            res = install_playwright(self.io)
-            if not res:
-                self.io.tool_warning("Unable to initialize playwright.")
-
-            self.scraper = Scraper(
-                print_error=self.io.tool_error, playwright_available=res, verify_ssl=self.verify_ssl
-            )
-
-        content = self.scraper.scrape(url) or ""
-        content = f"Here is the content of {url}:\n\n" + content
-        if return_content:
-            return content
-
-        self.io.tool_output("... added to chat.")
-
-        self.coder.cur_messages += [
-            dict(role="user", content=content),
-            dict(role="assistant", content="Ok."),
-        ]
 
     def is_command(self, inp):
         return inp[0] in "/!"
@@ -228,7 +184,6 @@ class Commands:
 
     def run(self, inp):
         if inp.startswith("!"):
-            self.coder.event("command_run")
             return self.do_run("run", inp[1:])
 
         res = self.matching_commands(inp)
@@ -237,11 +192,9 @@ class Commands:
         matching_commands, first_word, rest_inp = res
         if len(matching_commands) == 1:
             command = matching_commands[0][1:]
-            self.coder.event(f"command_{command}")
             return self.do_run(command, rest_inp)
         elif first_word in matching_commands:
             command = first_word[1:]
-            self.coder.event(f"command_{command}")
             return self.do_run(command, rest_inp)
         elif len(matching_commands) > 1:
             self.io.tool_error(f"Ambiguous command: {', '.join(matching_commands)}")
@@ -385,12 +338,8 @@ class Commands:
         for fname in self.coder.abs_fnames:
             relative_fname = self.coder.get_rel_fname(fname)
             content = self.io.read_text(fname)
-            if is_image_file(relative_fname):
-                tokens = self.coder.main_model.token_count_for_image(fname)
-            else:
-                # approximate
-                content = f"{relative_fname}\n{fence}\n" + content + "{fence}\n"
-                tokens = self.coder.main_model.token_count(content)
+            content = f"{relative_fname}\n{fence}\n" + content + "{fence}\n"
+            tokens = self.coder.main_model.token_count(content)
             res.append((tokens, f"{relative_fname}", "/drop to remove"))
 
         # read-only files
@@ -970,57 +919,6 @@ class Commands:
         self.io.tool_output()
         self.io.tool_output("Use `/help <question>` to ask questions about how to use aider.")
 
-    def cmd_help(self, args):
-        "Ask questions about aider"
-
-        if not args.strip():
-            self.basic_help()
-            return
-
-        self.coder.event("interactive help")
-        from aider.coders import Coder
-
-        if not self.help:
-            res = install_help_extra(self.io)
-            if not res:
-                self.io.tool_error("Unable to initialize interactive help.")
-                return
-
-            self.help = Help()
-
-        coder = Coder.create(
-            io=self.io,
-            from_coder=self.coder,
-            edit_format="help",
-            summarize_from_coder=False,
-            map_tokens=512,
-            map_mul_no_files=1,
-        )
-        user_msg = self.help.ask(args)
-        user_msg += """
-# Announcement lines from when this session of aider was launched:
-
-"""
-        user_msg += "\n".join(self.coder.get_announcements()) + "\n"
-
-        coder.run(user_msg, preproc=False)
-
-        if self.coder.repo_map:
-            map_tokens = self.coder.repo_map.max_map_tokens
-            map_mul_no_files = self.coder.repo_map.map_mul_no_files
-        else:
-            map_tokens = 0
-            map_mul_no_files = 1
-
-        raise SwitchCoder(
-            edit_format=self.coder.edit_format,
-            summarize_from_coder=False,
-            from_coder=coder,
-            map_tokens=map_tokens,
-            map_mul_no_files=map_mul_no_files,
-            show_announcements=False,
-        )
-
     def cmd_ask(self, args):
         "Ask questions about the code base without editing any files"
         return self._generic_chat_command(args, "ask")
@@ -1076,102 +974,6 @@ class Commands:
 
         res += "\n"
         return res
-
-    def cmd_voice(self, args):
-        "Record and transcribe voice input"
-
-        if not self.voice:
-            if "OPENAI_API_KEY" not in os.environ:
-                self.io.tool_error("To use /voice you must provide an OpenAI API key.")
-                return
-            try:
-                self.voice = voice.Voice(audio_format=self.args.voice_format)
-            except voice.SoundDeviceError:
-                self.io.tool_error(
-                    "Unable to import `sounddevice` and/or `soundfile`, is portaudio installed?"
-                )
-                return
-
-        history_iter = self.io.get_input_history()
-
-        history = []
-        size = 0
-        for line in history_iter:
-            if line.startswith("/"):
-                continue
-            if line in history:
-                continue
-            if size + len(line) > 1024:
-                break
-            size += len(line)
-            history.append(line)
-
-        history.reverse()
-        history = "\n".join(history)
-
-        try:
-            text = self.voice.record_and_transcribe(history, language=self.voice_language)
-        except litellm.OpenAIError as err:
-            self.io.tool_error(f"Unable to use OpenAI whisper model: {err}")
-            return
-
-        if text:
-            self.io.add_to_input_history(text)
-            self.io.print()
-            self.io.user_input(text, log_only=False)
-            self.io.print()
-
-        return text
-
-    def cmd_paste(self, args):
-        """Paste image/text from the clipboard into the chat.\
-        Optionally provide a name for the image."""
-        try:
-            # Check for image first
-            image = ImageGrab.grabclipboard()
-            if isinstance(image, Image.Image):
-                if args.strip():
-                    filename = args.strip()
-                    ext = os.path.splitext(filename)[1].lower()
-                    if ext in (".jpg", ".jpeg", ".png"):
-                        basename = filename
-                    else:
-                        basename = f"{filename}.png"
-                else:
-                    basename = "clipboard_image.png"
-
-                temp_dir = tempfile.mkdtemp()
-                temp_file_path = os.path.join(temp_dir, basename)
-                image_format = "PNG" if basename.lower().endswith(".png") else "JPEG"
-                image.save(temp_file_path, image_format)
-
-                abs_file_path = Path(temp_file_path).resolve()
-
-                # Check if a file with the same name already exists in the chat
-                existing_file = next(
-                    (f for f in self.coder.abs_fnames if Path(f).name == abs_file_path.name), None
-                )
-                if existing_file:
-                    self.coder.abs_fnames.remove(existing_file)
-                    self.io.tool_output(f"Replaced existing image in the chat: {existing_file}")
-
-                self.coder.abs_fnames.add(str(abs_file_path))
-                self.io.tool_output(f"Added clipboard image to the chat: {abs_file_path}")
-                self.coder.check_added_files()
-
-                return
-
-            # If not an image, try to get text
-            text = pyperclip.paste()
-            if text:
-                self.io.tool_output(text)
-                return text
-
-            self.io.tool_error("No image or text content found in clipboard.")
-            return
-
-        except Exception as e:
-            self.io.tool_error(f"Error processing clipboard content: {e}")
 
     def cmd_read_only(self, args):
         "Add files to the chat that are for reference, not to be edited"
@@ -1324,47 +1126,6 @@ class Commands:
             self.io.tool_output(f"Saved commands to {args.strip()}")
         except Exception as e:
             self.io.tool_error(f"Error saving commands to file: {e}")
-
-    def cmd_copy(self, args):
-        "Copy the last assistant message to the clipboard"
-        all_messages = self.coder.done_messages + self.coder.cur_messages
-        assistant_messages = [msg for msg in reversed(all_messages) if msg["role"] == "assistant"]
-
-        if not assistant_messages:
-            self.io.tool_error("No assistant messages found to copy.")
-            return
-
-        last_assistant_message = assistant_messages[0]["content"]
-
-        try:
-            pyperclip.copy(last_assistant_message)
-            preview = (
-                last_assistant_message[:50] + "..."
-                if len(last_assistant_message) > 50
-                else last_assistant_message
-            )
-            self.io.tool_output(f"Copied last assistant message to clipboard. Preview: {preview}")
-        except pyperclip.PyperclipException as e:
-            self.io.tool_error(f"Failed to copy to clipboard: {str(e)}")
-            self.io.tool_output(
-                "You may need to install xclip or xsel on Linux, or pbcopy on macOS."
-            )
-        except Exception as e:
-            self.io.tool_error(f"An unexpected error occurred while copying to clipboard: {str(e)}")
-
-    def cmd_report(self, args):
-        "Report a problem by opening a GitHub Issue"
-        from aider.report import report_github_issue
-
-        announcements = "\n".join(self.coder.get_announcements())
-        issue_text = announcements
-
-        if args.strip():
-            title = args.strip()
-        else:
-            title = None
-
-        report_github_issue(issue_text, title=title, confirm=False)
 
 
 def expand_subdir(file_path):

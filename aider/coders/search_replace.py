@@ -4,8 +4,7 @@ import sys
 from pathlib import Path
 
 import git
-from diff_match_patch import diff_match_patch
-from tqdm import tqdm
+from .diff_match_patch import diff_match_patch
 
 from aider.dump import dump
 from aider.utils import GitTemporaryDirectory
@@ -713,7 +712,7 @@ def colorize_result(result):
 
 def main(dnames):
     all_results = []
-    for dname in tqdm(dnames):
+    for dname in dnames:
         dname = Path(dname)
         results = proc(dname)
         for method, res in results:

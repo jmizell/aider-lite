@@ -3,27 +3,24 @@ import json
 import os
 import re
 import sys
-import threading
 import traceback
+import importlib.resources as importlib_resources
 from pathlib import Path
 
 import git
-import importlib_resources
 from dotenv import load_dotenv
 from prompt_toolkit.enums import EditingMode
 
 from aider import __version__, models, urls, utils
-from aider.analytics import Analytics
 from aider.args import get_parser
 from aider.coders import Coder
 from aider.commands import Commands, SwitchCoder
 from aider.format_settings import format_settings, scrub_sensitive_info
 from aider.history import ChatSummary
 from aider.io import InputOutput
-from aider.llm import litellm  # noqa: F401; properly init litellm on launch
+from aider.llm import apiclient  # noqa: F401; properly init litellm on launch
 from aider.repo import ANY_GIT_ERROR, GitRepo
 from aider.report import report_uncaught_exceptions
-from aider.versioncheck import check_version, install_from_main_branch, install_upgrade
 
 from .dump import dump  # noqa: F401
 
@@ -178,57 +175,6 @@ def check_gitignore(git_root, io, ask=True):
     io.tool_output(f"Added {', '.join(patterns_to_add)} to .gitignore")
 
 
-def check_streamlit_install(io):
-    return utils.check_pip_install_extra(
-        io,
-        "streamlit",
-        "You need to install the aider browser feature",
-        ["aider-chat[browser]"],
-    )
-
-
-def launch_gui(args):
-    from streamlit.web import cli
-
-    from aider import gui
-
-    print()
-    print("CONTROL-C to exit...")
-
-    target = gui.__file__
-
-    st_args = ["run", target]
-
-    st_args += [
-        "--browser.gatherUsageStats=false",
-        "--runner.magicEnabled=false",
-        "--server.runOnSave=false",
-    ]
-
-    # https://github.com/Aider-AI/aider/issues/2193
-    is_dev = "-dev" in str(__version__)
-
-    if is_dev:
-        print("Watching for file changes.")
-    else:
-        st_args += [
-            "--global.developmentMode=false",
-            "--server.fileWatcherType=none",
-            "--client.toolbarMode=viewer",  # minimal?
-        ]
-
-    st_args += ["--"] + args
-
-    cli.main(st_args)
-
-    # from click.testing import CliRunner
-    # runner = CliRunner()
-    # from streamlit.web import bootstrap
-    # bootstrap.load_config_options(flag_options={})
-    # cli.main_run(target, args)
-    # sys.argv = ['streamlit', 'run', '--'] + args
-
-
 def parse_lint_cmds(lint_cmds, io):
     err = False
     res = dict()
@@ -312,6 +258,31 @@ def register_models(git_root, model_settings_fname, io, verbose=False):
     return None
 
 
+def register_model_metadata(git_root, model_metadata_fname, io, verbose=False):
+    model_metadata_files = []
+
+    # Add the resource file path
+    resource_metadata = importlib_resources.files("aider.resources").joinpath("model-metadata.json")
+    model_metadata_files.append(str(resource_metadata))
+
+    # Add user-specified files
+    model_metadata_files += generate_search_path_list(
+        ".aider.model.metadata.json",
+        git_root,
+        model_metadata_fname
+    )
+
+    try:
+        model_metadata_files_loaded = models.register_apiclient_models(model_metadata_files)
+        if len(model_metadata_files_loaded) > 0 and verbose:
+            io.tool_output("Loaded model metadata from:")
+            for model_metadata_file in model_metadata_files_loaded:
+                io.tool_output(f"  - {model_metadata_file}")  # noqa: E221
+    except Exception as e:
+        io.tool_error(f"Error loading model metadata models: {e}")
+        return 1
+
+
 def load_dotenv_files(git_root, dotenv_fname, encoding="utf-8"):
     dotenv_files = generate_search_path_list(
         ".env",
@@ -329,26 +300,6 @@ def load_dotenv_files(git_root, dotenv_fname, encoding="utf-8"):
         except Exception as e:
             print(f"Error loading {fname}: {e}")
     return loaded
-
-
-def register_litellm_models(git_root, model_metadata_fname, io, verbose=False):
-    model_metatdata_files = generate_search_path_list(
-        ".aider.model.metadata.json", git_root, model_metadata_fname
-    )
-
-    # Add the resource file path
-    resource_metadata = importlib_resources.files("aider.resources").joinpath("model-metadata.json")
-    model_metatdata_files.append(str(resource_metadata))
-
-    try:
-        model_metadata_files_loaded = models.register_litellm_models(model_metatdata_files)
-        if len(model_metadata_files_loaded) > 0 and verbose:
-            io.tool_output("Loaded model metadata from:")
-            for model_metadata_file in model_metadata_files_loaded:
-                io.tool_output(f"  - {model_metadata_file}")  # noqa: E221
-    except Exception as e:
-        io.tool_error(f"Error loading model metadata models: {e}")
-        return 1
 
 
 def sanity_check_repo(repo, io):
@@ -376,7 +327,6 @@ def sanity_check_repo(repo, io):
         io.tool_error("Aider only works with git repos with version number 1 or 2.")
         io.tool_output("You may be able to convert your repo: git update-index --index-version=2")
         io.tool_output("Or run aider --no-git to proceed without using git.")
-        io.offer_url(urls.git_index_version, "Open documentation url for more info?")
         return False
 
     io.tool_error("Unable to read git repository, it may be corrupt?")
@@ -437,18 +387,6 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
     # Parse again to include any arguments that might have been defined in .env
     args = parser.parse_args(argv)
 
-    if args.analytics_disable:
-        analytics = Analytics(permanently_disable=True)
-        print("Analytics have been permanently disabled.")
-
-    if not args.verify_ssl:
-        import httpx
-
-        os.environ["SSL_VERIFY"] = ""
-        litellm._load_litellm()
-        litellm._lazy_module.client_session = httpx.Client(verify=False)
-        litellm._lazy_module.aclient_session = httpx.AsyncClient(verify=False)
-
     if args.dark_mode:
         args.user_input_color = "#32FF32"
         args.tool_error_color = "#FF3333"
@@ -502,38 +440,6 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
         io = get_io(False)
         io.tool_warning("Terminal does not support pretty output (UnicodeDecodeError)")
 
-    analytics = Analytics(logfile=args.analytics_log, permanently_disable=args.analytics_disable)
-    if args.analytics:
-        if analytics.need_to_ask():
-            io.tool_output(
-                "Aider respects your privacy and never collects your code, chat messages, keys or"
-                " personal info."
-            )
-            io.tool_output(f"For more info: {urls.analytics}")
-            disable = not io.confirm_ask(
-                "Allow collection of anonymous analytics to help improve aider?"
-            )
-
-            analytics.asked_opt_in = True
-            if disable:
-                analytics.disable(permanently=True)
-                io.tool_output("Analytics have been permanently disabled.")
-
-            analytics.save_data()
-            io.tool_output()
-
-        # This is a no-op if the user has opted out
-        analytics.enable()
-
-    analytics.event("launched")
-
-    if args.gui and not return_coder:
-        if not check_streamlit_install(io):
-            return
-        analytics.event("gui session")
-        launch_gui(argv)
-        return
-
     if args.verbose:
         for fname in loaded_dotenvs:
             io.tool_output(f"Loaded {fname}")
@@ -578,21 +484,6 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
         if right_repo_root:
             return main(argv, input, output, right_repo_root, return_coder=return_coder)
 
-    if args.just_check_update:
-        update_available = check_version(io, just_check=True, verbose=args.verbose)
-        return 0 if not update_available else 1
-
-    if args.install_main_branch:
-        success = install_from_main_branch(io)
-        return 0 if success else 1
-
-    if args.upgrade:
-        success = install_upgrade(io)
-        return 0 if success else 1
-
-    if args.check_update:
-        check_version(io, verbose=args.verbose)
-
     if args.list_models:
         models.print_matching_models(io, args.list_models)
         return 0
@@ -612,27 +503,12 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
 
     check_and_load_imports(io, verbose=args.verbose)
 
-    if args.anthropic_api_key:
-        os.environ["ANTHROPIC_API_KEY"] = args.anthropic_api_key
-
-    if args.openai_api_key:
-        os.environ["OPENAI_API_KEY"] = args.openai_api_key
-    if args.openai_api_base:
-        os.environ["OPENAI_API_BASE"] = args.openai_api_base
-    if args.openai_api_version:
-        os.environ["OPENAI_API_VERSION"] = args.openai_api_version
-    if args.openai_api_type:
-        os.environ["OPENAI_API_TYPE"] = args.openai_api_type
-    if args.openai_organization_id:
-        os.environ["OPENAI_ORGANIZATION"] = args.openai_organization_id
+    register_model_metadata(git_root, args.model_metadata_file, io, verbose=args.verbose)
 
     register_models(git_root, args.model_settings_file, io, verbose=args.verbose)
-    register_litellm_models(git_root, args.model_metadata_file, io, verbose=args.verbose)
 
     if not args.model:
-        args.model = "gpt-4o-2024-08-06"
-        if os.environ.get("ANTHROPIC_API_KEY"):
-            args.model = "claude-3-5-sonnet-20241022"
+        args.model = models.DEFAULT_MODEL_NAME
 
     main_model = models.Model(
         args.model,
@@ -652,14 +528,7 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
     if args.show_model_warnings:
         problem = models.sanity_check_models(io, main_model)
         if problem:
-            analytics.event("model warning", main_model=main_model)
             io.tool_output("You can skip this check with --no-show-model-warnings")
-
-            try:
-                io.offer_url(urls.model_warnings, "Open documentation url for more info?")
-                io.tool_output()
-            except KeyboardInterrupt:
-                return 1
 
     repo = None
     if args.git:
@@ -726,7 +595,6 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
             test_cmd=args.test_cmd,
             commands=commands,
             summarizer=summarizer,
-            analytics=analytics,
             map_refresh=args.map_refresh,
             cache_prompts=args.cache_prompts,
             map_mul_no_files=args.map_multiplier_no_files,
@@ -785,10 +653,6 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
         coder.apply_updates()
         return
 
-    if args.apply_clipboard_edits:
-        args.edit_format = main_model.editor_edit_format
-        args.message = "/paste"
-
     if "VSCODE_GIT_IPC_HANDLE" in os.environ:
         args.pretty = False
         io.tool_output("VSCode terminal detected, pretty output has been disabled.")
@@ -832,8 +696,6 @@ def main(argv=None, input=None, output=None, force_git_root=None, return_coder=F
     if args.exit:
         return
 
-    analytics.event("cli session", main_model=main_model, edit_format=main_model.edit_format)
-
     while True:
         try:
             coder.run()
@@ -876,14 +738,6 @@ def check_and_load_imports(io, verbose=False):
                 io.tool_output(
                     "First run for this version and executable, loading imports synchronously"
                 )
-            try:
-                load_slow_imports(swallow=False)
-            except Exception as err:
-                io.tool_error(str(err))
-                io.tool_output("Error loading required imports. Did you install aider properly?")
-                io.offer_url(urls.install_properly, "Open documentation url for more info?")
-
-                sys.exit(1)
 
             installs[str(key)] = True
             installs_file.parent.mkdir(parents=True, exist_ok=True)
@@ -891,32 +745,10 @@ def check_and_load_imports(io, verbose=False):
                 json.dump(installs, f, indent=4)
             if verbose:
                 io.tool_output("Imports loaded and installs file updated")
-        else:
-            if verbose:
-                io.tool_output("Not first run, loading imports in background thread")
-            thread = threading.Thread(target=load_slow_imports)
-            thread.daemon = True
-            thread.start()
     except Exception as e:
         io.tool_warning(f"Error in checking imports: {e}")
         if verbose:
             io.tool_output(f"Full exception details: {traceback.format_exc()}")
-
-
-def load_slow_imports(swallow=True):
-    # These imports are deferred in various ways to
-    # improve startup time.
-    # This func is called either synchronously or in a thread
-    # depending on whether it's been run before for this version and executable.
-
-    try:
-        import httpx  # noqa: F401
-        import litellm  # noqa: F401
-        import networkx  # noqa: F401
-        import numpy  # noqa: F401
-    except Exception as e:
-        if not swallow:
-            raise e
 
 
 if __name__ == "__main__":
