@@ -2,8 +2,9 @@
 .vscode/
 aider.code-workspace
 *.pyc
-.aider*
+.aider-lite*
 aider_chat.egg-info/
+aider_lite.egg-info/
 build
 dist/
 Gemfile.lock
@@ -13,3 +14,5 @@ _site
 aider/__version__.py
 .venv/
 .idea/
+venv/
+.env

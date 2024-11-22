@@ -1,5 +1,6 @@
 [project]
-name = "aider-chat"
+name = "aider-lite"
+version = "0.1.0"
 description = "Aider is AI pair programming in your terminal"
 readme = "README.md"
 classifiers = [
@@ -16,29 +17,26 @@ classifiers = [
     "Topic :: Software Development",
 ]
 requires-python = ">=3.9,<3.13"
-dynamic = ["dependencies", "optional-dependencies", "version"]
+dynamic = ["dependencies", "optional-dependencies"]
 
 [project.urls]
-Homepage = "https://github.com/Aider-AI/aider"
+Homepage = "https://github.com/jmizell/aider-lite"
 
 [project.scripts]
-aider = "aider.main:main"
+aider-lite = "aider_lite.main:main"
 
 [tool.setuptools.dynamic]
 dependencies = { file = "requirements.txt" }
 
 [tool.setuptools.packages.find]
-include = ["aider*"]
-
-[tool.setuptools.package-data]
-"aider" = ["queries/*.scm"]
+include = ["aider_lite*"]
 
 [build-system]
-requires = ["setuptools>=68", "setuptools_scm[toml]>=8"]
+requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [tool.setuptools_scm]
-write_to = "aider/__version__.py"
+write_to = "aider_lite/__version__.py"
 
 [tool.codespell]
 skip = "*.svg,Gemfile.lock"

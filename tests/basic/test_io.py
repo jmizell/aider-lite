@@ -6,9 +6,9 @@ from unittest.mock import MagicMock, patch
 from prompt_toolkit.completion import CompleteEvent
 from prompt_toolkit.document import Document
 
-from aider.dump import dump  # noqa: F401
-from aider.io import AutoCompleter, ConfirmGroup, InputOutput
-from aider.utils import ChdirTemporaryDirectory
+from aider_lite.dump import dump  # noqa: F401
+from aider_lite.io import AutoCompleter, ConfirmGroup, InputOutput
+from aider_lite.utils import ChdirTemporaryDirectory
 
 
 class TestInputOutput(unittest.TestCase):
@@ -114,7 +114,7 @@ class TestInputOutput(unittest.TestCase):
         commands = MagicMock()
 
         # Simulate IsADirectoryError
-        with patch("aider.io.open", side_effect=IsADirectoryError):
+        with patch("aider_lite.io.open", side_effect=IsADirectoryError):
             result = io.get_input(root, rel_fnames, addable_rel_fnames, commands)
             self.assertEqual(result, "test input")
             mock_input.assert_called_once()

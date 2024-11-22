@@ -1,9 +1,9 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
-from aider.exceptions import LiteLLMExceptions
-from aider.llm import apiclient
-from aider.sendchat import send_completion, simple_send_with_retries
+from aider_lite.exceptions import LiteLLMExceptions
+from aider_lite.llm import apiclient
+from aider_lite.sendchat import send_completion, simple_send_with_retries
 
 
 class PrintCalled(Exception):

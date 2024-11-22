@@ -6,8 +6,8 @@ from unittest import mock
 import pytest
 from git import GitError, Repo
 
-from aider import urls
-from aider.main import sanity_check_repo
+from aider_lite import urls
+from aider_lite.main import sanity_check_repo
 
 
 @pytest.fixture
@@ -126,7 +126,7 @@ def test_git_index_version_greater_than_2(mock_browser, create_repo, mock_io):
     mock_io.tool_output.assert_any_call(
         "You may be able to convert your repo: git update-index --index-version=2"
     )
-    mock_io.tool_output.assert_any_call("Or run aider --no-git to proceed without using git.")
+    mock_io.tool_output.assert_any_call("Or run aider_lite --no-git to proceed without using git.")
 
 
 def test_bare_repository(create_repo, mock_io, tmp_path):

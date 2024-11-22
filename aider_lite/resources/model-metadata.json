@@ -1,0 +1,9 @@
+{
+    "openrouter/qwen/qwen-2.5-coder-32b-instruct": {
+        "max_tokens": 33792,
+        "max_input_tokens": 33792,
+        "max_output_tokens": 33792,
+        "litellm_provider": "openrouter",
+        "mode": "chat",
+    },  
+}

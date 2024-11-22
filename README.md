@@ -1,6 +1,6 @@
-# Aider-Lite - Streamlined ChatGPT Coding Assistant
+# Aider-Lite - Stripped Down ChatGPT Coding Assistant
 
-**Note: This is a simplified fork of [aider](https://github.com/paul-gauthier/aider)**
+**Note: This is a stripped down fork of [aider](https://github.com/paul-gauthier/aider)**
 
 This fork focuses on core functionality by maintaining only essential features. Key changes include:
 
@@ -14,20 +14,20 @@ Aider-Lite is a command-line tool that helps you edit code in your local git rep
 ## Installation
 
 ```bash
-pip install aider
+pip install .
 ```
 
 ## Quick Start
 ```bash
-# Start aider with specific files
-aider file1.py file2.py
+# Start aider_lite with specific files
+aider_lite-lite file1.py file2.py
 
-# Start aider with a git repository
-aider path/to/repo
+# Start aider_lite with a git repository
+aider_lite-lite path/to/repo
 ```
 
 ## Supported Models
-Aider works with the following models out of the box:
+Aider-lite works with the following models out of the box:
 
 * `anthropic/claude-3.5-sonnet` (default)
 * `meta-llama/llama-3.2-3b-instruct`
@@ -89,26 +89,26 @@ Aider works with the following models out of the box:
 
 * `OPENAI_API_KEY`: Your API key
 * `OPENAI_API_BASE`: API base URL (default: `https://api.openai.com`)
-Additional options can be configured using environment variables with the prefix `AIDER_`.
+Additional options can be configured using environment variables with the prefix `AIDER-LITE_`.
 
 ## Configuration Files
 Aider looks for configuration in the following locations (in order):
 
-* `.aider.conf.yml` in the current directory
-* `.aider.conf.yml` in the git repository root
-* `.aider.conf.yml` in your home directory
+* `.aider-lite.conf.yml` in the current directory
+* `.aider-lite.conf.yml` in the git repository root
+* `.aider-lite.conf.yml` in your home directory
 
 ### Examples
 ```
 # Use with specific model
-aider --model anthropic/claude-3.5-sonnet file.py
+aider-lite --model anthropic/claude-3.5-sonnet file.py
 
 # Enable dark mode with auto-commits
-aider --dark-mode --auto-commits project/
+aider-lite --dark-mode --auto-commits project/
 
 # Run with custom lint command
-aider --lint-cmd "python: flake8 --select=E9" src/
+aider-lite --lint-cmd "python: flake8 --select=E9" src/
 
 # Send single message and exit
-aider -m "Fix the bug in main.py" main.py
+aider-lite -m "Fix the bug in main.py" main.py
 ```

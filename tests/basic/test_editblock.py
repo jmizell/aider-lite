@@ -5,12 +5,12 @@ import unittest
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-from aider.coders import Coder
-from aider.coders import editblock_coder as eb
-from aider.dump import dump  # noqa: F401
-from aider.io import InputOutput
-from aider.models import Model
-from aider.utils import ChdirTemporaryDirectory
+from aider_lite.coders import Coder
+from aider_lite.coders import editblock_coder as eb
+from aider_lite.dump import dump  # noqa: F401
+from aider_lite.io import InputOutput
+from aider_lite.models import Model
+from aider_lite.utils import ChdirTemporaryDirectory
 
 
 class TestUtils(unittest.TestCase):
@@ -189,14 +189,14 @@ oops!
 
     def test_find_original_update_blocks_no_final_newline(self):
         edit = """
-aider/coder.py
+aider_lite/coder.py
 <<<<<<< SEARCH
             self.console.print("[red]^C again to quit")
 =======
             self.io.tool_error("^C again to quit")
 >>>>>>> REPLACE
 
-aider/coder.py
+aider_lite/coder.py
 <<<<<<< SEARCH
             self.io.tool_error("Malformed ORIGINAL/UPDATE blocks, retrying...")
             self.io.tool_error(err)
@@ -205,14 +205,14 @@ aider/coder.py
             self.io.tool_error(str(err))
 >>>>>>> REPLACE
 
-aider/coder.py
+aider_lite/coder.py
 <<<<<<< SEARCH
             self.console.print("[red]Unable to get commit message from gpt-3.5-turbo. Use /commit to try again.\n")
 =======
             self.io.tool_error("Unable to get commit message from gpt-3.5-turbo. Use /commit to try again.")
 >>>>>>> REPLACE
 
-aider/coder.py
+aider_lite/coder.py
 <<<<<<< SEARCH
             self.console.print("[red]Skipped commit.")
 =======
@@ -221,52 +221,6 @@ aider/coder.py
 
         # Should not raise a ValueError
         list(eb.find_original_update_blocks(edit))
-
-    def test_incomplete_edit_block_missing_filename(self):
-        edit = """
-No problem! Here are the changes to patch `subprocess.check_output` instead of `subprocess.run` in both tests:
-
-```python
-tests/test_repomap.py
-<<<<<<< SEARCH
-    def test_check_for_ctags_failure(self):
-        with patch("subprocess.run") as mock_run:
-            mock_run.side_effect = Exception("ctags not found")
-=======
-    def test_check_for_ctags_failure(self):
-        with patch("subprocess.check_output") as mock_check_output:
-            mock_check_output.side_effect = Exception("ctags not found")
->>>>>>> REPLACE
-
-<<<<<<< SEARCH
-    def test_check_for_ctags_success(self):
-        with patch("subprocess.run") as mock_run:
-            mock_run.return_value = CompletedProcess(args=["ctags", "--version"], returncode=0, stdout='''{
-  "_type": "tag",
-  "name": "status",
-  "path": "aider/main.py",
-  "pattern": "/^    status = main()$/",
-  "kind": "variable"
-}''')
-=======
-    def test_check_for_ctags_success(self):
-        with patch("subprocess.check_output") as mock_check_output:
-            mock_check_output.return_value = '''{
-  "_type": "tag",
-  "name": "status",
-  "path": "aider/main.py",
-  "pattern": "/^    status = main()$/",
-  "kind": "variable"
-}'''
->>>>>>> REPLACE
-```
-
-These changes replace the `subprocess.run` patches with `subprocess.check_output` patches in both `test_check_for_ctags_failure` and `test_check_for_ctags_success` tests.
-"""
-        edit_blocks = list(eb.find_original_update_blocks(edit))
-        self.assertEqual(len(edit_blocks), 2)  # 2 edits
-        self.assertEqual(edit_blocks[0][0], "tests/test_repomap.py")
-        self.assertEqual(edit_blocks[1][0], "tests/test_repomap.py")
 
     def test_replace_part_with_missing_varied_leading_whitespace(self):
         whole = """

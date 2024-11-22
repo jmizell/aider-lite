@@ -10,13 +10,13 @@ from unittest import TestCase, mock
 
 import git
 
-from aider.coders import Coder
-from aider.commands import Commands, SwitchCoder
-from aider.dump import dump  # noqa: F401
-from aider.io import InputOutput
-from aider.models import Model
-from aider.repo import GitRepo
-from aider.utils import ChdirTemporaryDirectory, GitTemporaryDirectory, make_repo
+from aider_lite.coders import Coder
+from aider_lite.commands import Commands, SwitchCoder
+from aider_lite.dump import dump  # noqa: F401
+from aider_lite.io import InputOutput
+from aider_lite.models import Model
+from aider_lite.repo import GitRepo
+from aider_lite.utils import ChdirTemporaryDirectory, GitTemporaryDirectory, make_repo
 
 
 class TestCommands(TestCase):
@@ -25,7 +25,7 @@ class TestCommands(TestCase):
         self.tempdir = tempfile.mkdtemp()
         os.chdir(self.tempdir)
 
-        self.GPT35 = Model("gpt-3.5-turbo")
+        self.GPT35 = Model("anthropic/claude-3.5-sonnet")
 
     def tearDown(self):
         os.chdir(self.original_cwd)
@@ -34,7 +34,7 @@ class TestCommands(TestCase):
     def test_cmd_add(self):
         # Initialize the Commands and InputOutput objects
         io = InputOutput(pretty=False, fancy_input=False, yes=True)
-        from aider.coders import Coder
+        from aider_lite.coders import Coder
 
         coder = Coder.create(self.GPT35, None, io)
         commands = Commands(io, coder)
@@ -50,7 +50,7 @@ class TestCommands(TestCase):
         # https://github.com/Aider-AI/aider/issues/293
 
         io = InputOutput(pretty=False, fancy_input=False, yes=False)
-        from aider.coders import Coder
+        from aider_lite.coders import Coder
 
         coder = Coder.create(self.GPT35, None, io)
         commands = Commands(io, coder)
@@ -60,7 +60,7 @@ class TestCommands(TestCase):
     def test_cmd_add_with_glob_patterns(self):
         # Initialize the Commands and InputOutput objects
         io = InputOutput(pretty=False, fancy_input=False, yes=True)
-        from aider.coders import Coder
+        from aider_lite.coders import Coder
 
         coder = Coder.create(self.GPT35, None, io)
         commands = Commands(io, coder)
@@ -86,7 +86,7 @@ class TestCommands(TestCase):
     def test_cmd_add_no_match(self):
         # yes=False means we will *not* create the file when it is not found
         io = InputOutput(pretty=False, fancy_input=False, yes=False)
-        from aider.coders import Coder
+        from aider_lite.coders import Coder
 
         coder = Coder.create(self.GPT35, None, io)
         commands = Commands(io, coder)
@@ -100,7 +100,7 @@ class TestCommands(TestCase):
     def test_cmd_add_no_match_but_make_it(self):
         # yes=True means we *will* create the file when it is not found
         io = InputOutput(pretty=False, fancy_input=False, yes=True)
-        from aider.coders import Coder
+        from aider_lite.coders import Coder
 
         coder = Coder.create(self.GPT35, None, io)
         commands = Commands(io, coder)
@@ -117,7 +117,7 @@ class TestCommands(TestCase):
     def test_cmd_add_drop_directory(self):
         # Initialize the Commands and InputOutput objects
         io = InputOutput(pretty=False, fancy_input=False, yes=False)
-        from aider.coders import Coder
+        from aider_lite.coders import Coder
 
         coder = Coder.create(self.GPT35, None, io)
         commands = Commands(io, coder)
@@ -168,7 +168,7 @@ class TestCommands(TestCase):
     def test_cmd_drop_with_glob_patterns(self):
         # Initialize the Commands and InputOutput objects
         io = InputOutput(pretty=False, fancy_input=False, yes=True)
-        from aider.coders import Coder
+        from aider_lite.coders import Coder
 
         coder = Coder.create(self.GPT35, None, io)
         commands = Commands(io, coder)
@@ -195,7 +195,7 @@ class TestCommands(TestCase):
     def test_cmd_add_bad_encoding(self):
         # Initialize the Commands and InputOutput objects
         io = InputOutput(pretty=False, fancy_input=False, yes=True)
-        from aider.coders import Coder
+        from aider_lite.coders import Coder
 
         coder = Coder.create(self.GPT35, None, io)
         commands = Commands(io, coder)
@@ -236,12 +236,11 @@ class TestCommands(TestCase):
         coder = Coder.create(self.GPT35, None, io)
         commands = Commands(io, coder)
 
-        commands.cmd_add("foo.txt bar.txt")
-
         # Redirect the standard output to an instance of io.StringIO
         stdout = StringIO()
         sys.stdout = stdout
 
+        commands.cmd_add("foo.txt bar.txt")
         commands.cmd_tokens("")
 
         # Reset the standard output
@@ -249,6 +248,7 @@ class TestCommands(TestCase):
 
         # Get the console output
         console_output = stdout.getvalue()
+        print(console_output)
 
         self.assertIn("foo.txt", console_output)
         self.assertIn("bar.txt", console_output)
@@ -290,7 +290,7 @@ class TestCommands(TestCase):
     def test_cmd_add_from_subdir_again(self):
         with GitTemporaryDirectory():
             io = InputOutput(pretty=False, fancy_input=False, yes=False)
-            from aider.coders import Coder
+            from aider_lite.coders import Coder
 
             coder = Coder.create(self.GPT35, None, io)
             commands = Commands(io, coder)
@@ -335,7 +335,7 @@ class TestCommands(TestCase):
             os.chdir(str(root))
 
             io = InputOutput(pretty=False, fancy_input=False, yes=False)
-            from aider.coders import Coder
+            from aider_lite.coders import Coder
 
             coder = Coder.create(self.GPT35, None, io)
             commands = Commands(io, coder)
@@ -358,7 +358,7 @@ class TestCommands(TestCase):
             make_repo()
 
             io = InputOutput(pretty=False, fancy_input=False, yes=False)
-            from aider.coders import Coder
+            from aider_lite.coders import Coder
 
             coder = Coder.create(self.GPT35, None, io)
             commands = Commands(io, coder)
@@ -376,7 +376,7 @@ class TestCommands(TestCase):
     def test_cmd_add_filename_with_special_chars(self):
         with ChdirTemporaryDirectory():
             io = InputOutput(pretty=False, fancy_input=False, yes=False)
-            from aider.coders import Coder
+            from aider_lite.coders import Coder
 
             coder = Coder.create(self.GPT35, None, io)
             commands = Commands(io, coder)
@@ -401,7 +401,7 @@ class TestCommands(TestCase):
     #         repo.git.commit("-m", "Initial commit")
     #
     #         io = InputOutput(pretty=False, fancy_input=False, yes=False)
-    #         from aider.coders import Coder
+    #         from aider_lite.coders import Coder
     #
     #         coder = Coder.create(Model("claude-3-5-sonnet-20240620"), None, io)
     #         print(coder.get_announcements())
@@ -441,7 +441,7 @@ class TestCommands(TestCase):
     def test_cmd_add_dirname_with_special_chars(self):
         with ChdirTemporaryDirectory():
             io = InputOutput(pretty=False, fancy_input=False, yes=False)
-            from aider.coders import Coder
+            from aider_lite.coders import Coder
 
             coder = Coder.create(self.GPT35, None, io)
             commands = Commands(io, coder)
@@ -459,7 +459,7 @@ class TestCommands(TestCase):
     def test_cmd_add_dirname_with_special_chars_git(self):
         with GitTemporaryDirectory():
             io = InputOutput(pretty=False, fancy_input=False, yes=False)
-            from aider.coders import Coder
+            from aider_lite.coders import Coder
 
             coder = Coder.create(self.GPT35, None, io)
             commands = Commands(io, coder)
@@ -481,7 +481,7 @@ class TestCommands(TestCase):
     def test_cmd_add_abs_filename(self):
         with ChdirTemporaryDirectory():
             io = InputOutput(pretty=False, fancy_input=False, yes=False)
-            from aider.coders import Coder
+            from aider_lite.coders import Coder
 
             coder = Coder.create(self.GPT35, None, io)
             commands = Commands(io, coder)
@@ -496,7 +496,7 @@ class TestCommands(TestCase):
     def test_cmd_add_quoted_filename(self):
         with ChdirTemporaryDirectory():
             io = InputOutput(pretty=False, fancy_input=False, yes=False)
-            from aider.coders import Coder
+            from aider_lite.coders import Coder
 
             coder = Coder.create(self.GPT35, None, io)
             commands = Commands(io, coder)
@@ -524,7 +524,7 @@ class TestCommands(TestCase):
             repo.git.rm("one.txt")
 
             io = InputOutput(pretty=False, fancy_input=False, yes=True)
-            from aider.coders import Coder
+            from aider_lite.coders import Coder
 
             coder = Coder.create(self.GPT35, None, io)
             commands = Commands(io, coder)
@@ -859,7 +859,7 @@ class TestCommands(TestCase):
     def test_cmd_add_unicode_error(self):
         # Initialize the Commands and InputOutput objects
         io = InputOutput(pretty=False, fancy_input=False, yes=True)
-        from aider.coders import Coder
+        from aider_lite.coders import Coder
 
         coder = Coder.create(self.GPT35, None, io)
         commands = Commands(io, coder)
@@ -877,7 +877,7 @@ class TestCommands(TestCase):
         with GitTemporaryDirectory():
             # Initialize the Commands and InputOutput objects
             io = InputOutput(pretty=False, fancy_input=False, yes=True)
-            from aider.coders import Coder
+            from aider_lite.coders import Coder
 
             coder = Coder.create(self.GPT35, None, io)
             commands = Commands(io, coder)
@@ -932,7 +932,7 @@ class TestCommands(TestCase):
     def test_cmd_test_unbound_local_error(self):
         with ChdirTemporaryDirectory():
             io = InputOutput(pretty=False, fancy_input=False, yes=False)
-            from aider.coders import Coder
+            from aider_lite.coders import Coder
 
             coder = Coder.create(self.GPT35, None, io)
             commands = Commands(io, coder)
@@ -949,7 +949,7 @@ class TestCommands(TestCase):
             repo = git.Repo()
 
             io = InputOutput(pretty=False, fancy_input=False, yes=False)
-            from aider.coders import Coder
+            from aider_lite.coders import Coder
 
             coder = Coder.create(self.GPT35, None, io)
             commands = Commands(io, coder)
@@ -1390,7 +1390,7 @@ class TestCommands(TestCase):
         question = "What is the meaning of life?"
         canned_reply = "The meaning of life is 42."
 
-        with mock.patch("aider.coders.Coder.run") as mock_run:
+        with mock.patch("aider_lite.coders.Coder.run") as mock_run:
             mock_run.return_value = canned_reply
 
             with self.assertRaises(SwitchCoder):

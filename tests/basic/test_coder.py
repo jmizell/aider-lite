@@ -6,18 +6,18 @@ from unittest.mock import MagicMock, patch
 
 import git
 
-from aider.coders import Coder
-from aider.dump import dump  # noqa: F401
-from aider.io import InputOutput
-from aider.models import Model
-from aider.repo import GitRepo
-from aider.utils import GitTemporaryDirectory
+from aider_lite.coders import Coder
+from aider_lite.dump import dump  # noqa: F401
+from aider_lite.io import InputOutput
+from aider_lite.models import Model
+from aider_lite.repo import GitRepo
+from aider_lite.utils import GitTemporaryDirectory
 
 
 class TestCoder(unittest.TestCase):
     def setUp(self):
         self.GPT35 = Model("gpt-3.5-turbo")
-        self.webbrowser_patcher = patch("aider.io.webbrowser.open")
+        self.webbrowser_patcher = patch("aider_lite.io.webbrowser.open")
         self.mock_webbrowser = self.webbrowser_patcher.start()
 
     def test_allowed_to_edit(self):
