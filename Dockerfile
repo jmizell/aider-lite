@@ -5,29 +5,30 @@ FROM ubuntu:jammy-20240911.1
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Install Python 3 and system dependencies
-RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip \
-    python3-pexpect \
-    python3-configargparse \
-    python3-dotenv \
-    python3-flake8 \
-    python3-git \
-    python3-jsonschema \
-    python3-networkx \
-    python3-numpy \
-    python3-pathspec \
-    python3-prompt-toolkit \
-    python3-pygments \
-    python3-pytest \
-    python3-requests \
-    python3-rich \
-    python3-scipy \
-    python3-yaml \
-    python3-pyls \
-    git \
-    golang-1.23 \
-    universal-ctags \
+RUN apt-get update \
+    && apt-get upgrade -y \
+    && apt-get install -y \
+        python3 \
+        python3-configargparse \
+        python3-dotenv \
+        python3-flake8 \
+        python3-git \
+        python3-jsonschema \
+        python3-numpy \
+        python3-pathspec \
+        python3-pexpect \
+        python3-pip \
+        python3-prompt-toolkit \
+        python3-pygments \
+        python3-pyls \
+        python3-pytest \
+        python3-requests \
+        python3-rich \
+        python3-scipy \
+        python3-yaml \
+        git \
+        golang-1.23 \
+        universal-ctags \
     && rm -rf /var/lib/apt/lists/*
 
 # Upgrade pip and setuptools
@@ -52,4 +53,4 @@ ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 
 # Default command
-ENTRYPOINT ["aider"]
+ENTRYPOINT ["aider-lite"]

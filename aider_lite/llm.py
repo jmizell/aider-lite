@@ -61,6 +61,28 @@ model_parameters = {
         "litellm_provider": "openrouter",
         "mode": "chat"
     },
+    "gpt-4o": {
+        "max_tokens": 32000,
+        "max_input_tokens": 128000,
+        "max_output_tokens": 16384,
+        "edit_format": "diff",
+        "use_repo_map": False,
+        "send_undo_reply": True,
+        "examples_as_sys_msg": True,
+        "litellm_provider": "openai",
+        "mode": "chat"
+    },
+    "gpt-4o-mini": {
+        "max_tokens": 32000,
+        "max_input_tokens": 128000,
+        "max_output_tokens": 16384,
+        "edit_format": "diff",
+        "use_repo_map": False,
+        "send_undo_reply": True,
+        "examples_as_sys_msg": True,
+        "litellm_provider": "openai",
+        "mode": "chat"
+    },
 }
 
 
@@ -205,35 +227,59 @@ class ApiClient:
 
     def __init__(self):
         self.api_key = os.getenv("OPENAI_API_KEY")
-        self.api_base = os.getenv("OPENAI_API_BASE")
+        self.api_base = os.getenv("OPENAI_BASE_URL")
+        self.api_provider = "openai_compatible"
         if not self.api_base:
-            self.api_base = "https://api.openai.com"
+            self.api_base = "https://api.openai.com/v1"
+            self.api_provider = "openai"
 
     def _handle_error_response(self, response):
         """Handle error responses from the API"""
-        error_msg = None
+
         try:
             error_data = response.json().get('error', {})
             error_msg = error_data.get('message')
             metadata = error_data.get('metadata')
-        except:
+        except json.JSONDecodeError:
             error_msg = response.text
             metadata = None
 
         if response.status_code == 401:
-            raise AuthenticationError(error_msg or "Authentication failed", code=401, metadata=metadata)
+            raise AuthenticationError(
+                error_msg or "Authentication failed",
+                code=401,
+                metadata=metadata,
+            )
         elif response.status_code == 403:
-            raise PermissionError(error_msg or "Permission denied", code=403, metadata=metadata)
+            raise PermissionError(
+                error_msg or "Permission denied",
+                code=403,
+                metadata=metadata,
+            )
         elif response.status_code == 429:
             if "quota" in error_msg.lower() or "credits" in error_msg.lower():
-                raise QuotaError(error_msg or "Quota exceeded", code=429, metadata=metadata)
-            raise RateLimitError(error_msg or "Rate limit exceeded", code=429, metadata=metadata)
+                raise QuotaError(
+                    error_msg or "Quota exceeded",
+                    code=429,
+                    metadata=metadata,
+                )
+            else:
+                raise RateLimitError(
+                    error_msg or "Rate limit exceeded",
+                    code=429,
+                    metadata=metadata,
+                )
         elif response.status_code in (500, 502, 503):
-            raise ServerError(error_msg or "Server error", code=response.status_code, metadata=metadata)
+            raise ServerError(
+                error_msg or "Server error",
+                code=response.status_code, metadata=metadata,
+            )
         else:
-            raise ModelError(error_msg or f"API request failed with status {response.status_code}",
-                           code=response.status_code,
-                           metadata=metadata)
+            raise ModelError(
+                error_msg or f"API request failed with status {response.status_code}",
+                code=response.status_code,
+                metadata=metadata,
+            )
 
     def completion(
             self,
@@ -255,7 +301,8 @@ class ApiClient:
         }
         if max_tokens:
             request_body["max_tokens"] = max_tokens
-            request_body["n_tokens"] = max_tokens
+            if self.api_provider != "openai":
+                request_body["n_tokens"] = max_tokens # llamacpp server compat
         if tools:
             request_body["tools"] = tools
             # ignoring tool choices as callers to completion are always one tool
@@ -271,7 +318,7 @@ class ApiClient:
 
         # Make a POST request to the API
         response = requests.post(
-            self.api_base + "/v1/chat/completions",
+            self.api_base + "/chat/completions",
             headers=headers,
             json=request_body
         )

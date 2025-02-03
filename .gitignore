@@ -3,6 +3,7 @@
 aider.code-workspace
 *.pyc
 .aider-lite*
+.aider_lite*
 aider_chat.egg-info/
 aider_lite.egg-info/
 build

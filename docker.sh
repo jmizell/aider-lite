@@ -9,4 +9,5 @@ docker run -it --rm \
   -v $(pwd):/workspace \
   -w /workspace \
   -e OPENAI_API_KEY=$OPENAI_API_KEY \
+  -e OPENAI_BASE_URL=$OPENAI_BASE_URL \
   aider-lite
