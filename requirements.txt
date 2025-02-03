@@ -1,73 +1,16 @@
-
-# ui components
-#prompt-toolkit==3.0.48
-#rich==13.9.3
-#pygments==2.18.0
-
-# potentially replaceable
-#jsonschema==4.23.0
-#configargparse==1.7
-#pyyaml==6.0.2
-#python-dotenv==1.0.1
-#pathspec==0.12.1
-#pexpect==4.9.0
-
-# core components
-#networkx==3.2.1
-#gitpython==3.1.43
-##tree-sitter-languages==1.10.2
-##tree-sitter==0.21.3
-##grep-ast==0.3.3
-#requests==2.32.3
-#numpy==2.0.2
-#scipy==1.13.1
-#flake8==7.1.1
-#pytest==8.3.3
-
-# Ubuntu 22.04 lts versions
-# ui components
 prompt-toolkit==3.0.28
 rich==11.2.0
 Pygments==2.11.2
-
-# potentially replaceable
 jsonschema==3.2.0
 ConfigArgParse==1.5.3
-#PyYAML==5.4.1
 python-dotenv==0.19.2
 pathspec==0.9.0
 pexpect==4.8.0
-
-# core components
 networkx==2.4
 GitPython==3.1.24
 requests==2.25.1
-#numpy==2.0.2 # upgraded from 1.21.5
-#scipy==1.13.1 # upgraded from 1.8.0
 flake8==4.0.1
 pytest==6.2.5
 python-language-server==0.36.2
 python-lsp-server==1.3.3
-
-# Ubuntu 22.04 lts packages
-#python3-pexpect
-#python3-configargparse
-#python3-dotenv
-#python3-flake8
-#python3-git
-#python3-jsonschema
-#python3-networkx
-#python3-numpy
-#python3-pathspec
-#python3-prompt-toolkit
-#python3-pygments
-#python3-pytest
-#python3-requests
-#python3-rich
-#python3-scipy
-#python3-yaml
-#python3-pyls
-#universal-ctags
-
 PyYAML==6.0.2
-
