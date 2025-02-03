@@ -88,8 +88,8 @@ Aider-lite works with the following models out of the box:
 ### Essential environment variables:
 
 * `OPENAI_API_KEY`: Your API key
-* `OPENAI_API_BASE`: API base URL (default: `https://api.openai.com`)
-Additional options can be configured using environment variables with the prefix `AIDER-LITE_`.
+* `OPENAI_BASE_URL`: API base URL (default: `https://api.openai.com/v1`)
+Additional options can be configured using environment variables with the prefix `AIDER_LITE_`.
 
 ## Configuration Files
 Aider looks for configuration in the following locations (in order):

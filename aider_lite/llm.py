@@ -227,10 +227,16 @@ class ApiClient:
 
     def __init__(self):
         self.api_key = os.getenv("OPENAI_API_KEY")
+        if not self.api_key:
+            raise AuthenticationError(
+                "No API key provided. Set OPENAI_API_KEY environment variable.")
+
         self.api_base = os.getenv("OPENAI_BASE_URL")
-        self.api_provider = "openai_compatible"
         if not self.api_base:
             self.api_base = "https://api.openai.com/v1"
+
+        self.api_provider = "openai_compatible"
+        if self.api_base == "https://api.openai.com/v1":
             self.api_provider = "openai"
 
     def _handle_error_response(self, response):
