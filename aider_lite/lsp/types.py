@@ -194,6 +194,14 @@ class Range(DataclassInstance):
     start: Position
     end: Position
 
+    @classmethod
+    def from_dict(cls, data: dict):
+        if 'start' in data:
+            data['start'] = Position(**data['start'])
+        if 'end' in data:
+            data['end'] = Position(**data['end'])
+        return cls(**data)
+
 
 @dataclass
 class Location(DataclassInstance):
@@ -205,12 +213,12 @@ class Location(DataclassInstance):
         range: The range within the resource.
     """
     uri: str
-    range: Range
+    range: Optional[Range] = None
 
     @classmethod
     def from_dict(cls, data: dict):
-        if 'range' in data:
-            data['range'] = Range(**data['range'])
+        if 'range' in data and data['range']:
+            data['range'] = Range.from_dict(data['range'])
         return cls(**data)
 
 
@@ -280,9 +288,9 @@ class DocumentSymbol(DataclassInstance):
     @classmethod
     def from_dict(cls, data: dict):
         if 'range' in data and data['range']:
-            data['range'] = Range(**data['range'])
+            data['range'] = Range.from_dict(data['range'])
         if 'selectionRange' in data and data['selectionRange']:
-            data['selectionRange'] = Range(**data['selectionRange'])
+            data['selectionRange'] = Range.from_dict(data['selectionRange'])
         if 'children' in data and data['children']:
             data['children'] = [cls.from_dict(child) for child in data['children']]
         return cls(**data)
@@ -309,8 +317,5 @@ class SymbolInformation(DataclassInstance):
     @classmethod
     def from_dict(cls, data: dict):
         if 'location' in data:
-            loc_data = data['location']
-            if 'range' in loc_data and loc_data['range']:
-                loc_data['range'] = Range(**loc_data['range'])
-            data['location'] = Location(**loc_data)
+            data['location'] = Location.from_dict(data['location'])
         return cls(**data)
